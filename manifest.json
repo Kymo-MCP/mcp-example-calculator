@@ -1,0 +1,61 @@
+{
+  "manifest_version": "0.2",
+  "name": "mcp-calculator-service",
+  "display_name": "MCP Calculator Service",
+  "version": "1.0.0",
+  "description": "A comprehensive mathematical calculation toolkit for MCP clients with specialized tools for addition, subtraction, multiplication, and division operations",
+  "long_description": "This extension provides a complete set of mathematical calculation tools through a Python MCP server. It includes specialized functions for basic arithmetic operations with detailed formatting and error handling, making it perfect for mathematical computations in AI workflows.",
+  "author": {
+    "name": "MCP Calculator Team",
+    "email": "support@mcp-calculator.com",
+    "url": "https://github.com/mcp-calculator/service"
+  },
+  "server": {
+    "type": "python",
+    "entry_point": "main.py",
+    "mcp_config": {
+      "command": "python",
+      "args": [
+        "${__dirname}/main.py"
+      ],
+      "env": {
+        "PYTHONPATH": "${__dirname}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "add",
+      "description": "Add two numbers together with detailed formatting"
+    },
+    {
+      "name": "subtract", 
+      "description": "Subtract one number from another with detailed formatting"
+    },
+    {
+      "name": "multiply",
+      "description": "Multiply two numbers together with detailed formatting"
+    },
+    {
+      "name": "divide",
+      "description": "Divide one number by another with error handling for division by zero"
+    }
+  ],
+  "keywords": [
+    "calculator",
+    "mathematics",
+    "arithmetic",
+    "addition",
+    "subtraction",
+    "multiplication",
+    "division",
+    "python",
+    "mcp"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/mcp-calculator/service",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mcp-calculator/service.git"
+  }
+}
