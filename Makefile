@@ -34,5 +34,5 @@ create-dirs:
 .PHONY: zip-python
 zip-python:
 	@echo "$(YELLOW)📦 压缩 Python 项目...$(NC)"
-	@zip -r $(BUILD_DIR)/$(PROJECT_NAME)-$(VERSION).zip $(PROJECT_DIR)/main.py $(PROJECT_DIR)/README.md $(PROJECT_DIR)/requirements.txt
+	@zip -j -r $(BUILD_DIR)/$(PROJECT_NAME)-$(VERSION).zip $(PROJECT_DIR)/main.py $(PROJECT_DIR)/README.md $(PROJECT_DIR)/requirements.txt
 	@echo "$(GREEN)✅ Python 项目已压缩: $(BUILD_DIR)/$(PROJECT_NAME)-$(VERSION).zip$(NC)"
