@@ -1,0 +1,25 @@
+{
+  "dxt_version": "0.1",
+  "name": "example-mcp",
+  "version": "1.0.0",
+  "description": "Example FastMCP server",
+  "author": {
+    "name": "Yu Wang"
+  },
+  "server": {
+    "type": "python",
+    "entry_point": "server/example_mcp.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "${__dirname}/server/",
+        "python",
+        "example_mcp.py"
+      ]
+    }
+  },
+  "license": "MIT"
+}
+

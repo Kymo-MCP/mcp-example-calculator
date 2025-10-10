@@ -1,0 +1,19 @@
+{
+  "dxt_version": "0.1",
+  "name": "python_mcp_binary",
+  "version": "1.0.0",
+  "description": "python mcp binary",
+  "author": {
+    "name": "yuwang"
+  },
+  "server": {
+    "type": "binary",
+    "entry_point": "dist/example_mcp",
+    "mcp_config": {
+      "command": "${__dirname}/dist/example_mcp",
+      "args": [],
+      "env": {}
+    }
+  },
+  "license": "MIT"
+}

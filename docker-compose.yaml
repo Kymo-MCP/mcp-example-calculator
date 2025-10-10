@@ -1,0 +1,7 @@
+services:
+  mcp_simple:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart:
+      unless-stopped
