@@ -1,0 +1,116 @@
+name: Package and Release (multi-language)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare tooling
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Package languages
+        id: package_languages
+        run: |
+          set -euo pipefail
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          REPO_NAME=$(basename "${GITHUB_REPOSITORY}")
+          OUT_DIR="release_artifacts"
+          mkdir -p "$OUT_DIR"
+
+          # NODEJS
+          if [ -d nodejs ]; then
+            echo "Packaging nodejs..."
+            (cd nodejs && \
+              if [ -f package.json ]; then npm ci; fi && \
+              npm run build --if-present || true && \
+              ZIP_NAME="nodejs-${REPO_NAME}-${SHORT_SHA}.zip" && \
+              zip -r "$GITHUB_WORKSPACE/$OUT_DIR/$ZIP_NAME" . -x "node_modules/*" ".git/*" ".github/*" "**/*.zip" "**/dist/*" "**/.venv/*" && \
+              # Optional: publish to GitHub Packages if package.json exists. Keep failures non-fatal.
+              if [ -f package.json ]; then \
+                echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" > .npmrc || true; \
+                npm publish --access public || echo "npm publish failed or not configured; skipping"; \
+              fi )
+          else
+            echo "No nodejs folder, skipping"
+          fi
+
+          # PYTHON
+          if [ -d python ]; then
+            echo "Packaging python..."
+            (cd python && \
+              if [ -f requirements.txt ]; then python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt; fi && \
+              ZIP_NAME="python-${REPO_NAME}-${SHORT_SHA}.zip" && \
+              zip -r "$GITHUB_WORKSPACE/$OUT_DIR/$ZIP_NAME" . -x ".venv/*" ".git/*" ".github/*" "**/*.zip" )
+          else
+            echo "No python folder, skipping"
+          fi
+
+          # JAVA (if present)
+          if [ -d java ]; then
+            echo "Packaging java..."
+            (cd java && \
+              if [ -f pom.xml ]; then mvn -q -DskipTests package; fi && \
+              ZIP_NAME="java-${REPO_NAME}-${SHORT_SHA}.zip" && \
+              zip -r "$GITHUB_WORKSPACE/$OUT_DIR/$ZIP_NAME" . -x ".git/*" ".github/*" "**/*.zip" )
+          else
+            echo "No java folder, skipping"
+          fi
+
+          # BINARY / other (pack entire binary dir)
+          if [ -d binary ]; then
+            echo "Packaging binary..."
+            (cd binary && \
+              ZIP_NAME="binary-${REPO_NAME}-${SHORT_SHA}.zip" && \
+              zip -r "$GITHUB_WORKSPACE/$OUT_DIR/$ZIP_NAME" . -x ".git/*" ".github/*" "**/*.zip" )
+          else
+            echo "No binary folder, skipping"
+          fi
+
+          # List artifacts
+          echo "Artifacts created:" && ls -lah "$OUT_DIR" || true
+          echo "artifacts_dir=$OUT_DIR" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: release-${{ github.run_number }}-${{ github.sha }}
+          release_name: Automated release ${{ github.run_number }}
+          body: Automated ZIP build of repository
+          draft: false
+          prerelease: false
+
+      - name: Upload artifacts to Release
+        run: |
+          set -euo pipefail
+          UPLOAD_URL="${{ steps.create_release.outputs.upload_url }}"
+          ART_DIR="${{ steps.package_languages.outputs.artifacts_dir }}"
+          if [ -z "$ART_DIR" ]; then ART_DIR=release_artifacts; fi
+          echo "Uploading artifacts from $ART_DIR"
+          for f in "$ART_DIR"/*.zip; do
+            [ -e "$f" ] || continue
+            echo "Uploading $f"
+            FNAME=$(basename "$f")
+            curl -sSL -X POST "${UPLOAD_URL}?name=${FNAME}" \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Content-Type: application/zip" \
+              --data-binary @"$f"
+          done
+
+
