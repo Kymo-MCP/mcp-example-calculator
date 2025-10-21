@@ -26,63 +26,41 @@ jobs:
         id: package_languages
         run: |
           set -euo pipefail
-          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
-          REPO_NAME=$(basename "${GITHUB_REPOSITORY}")
-          OUT_DIR="release_artifacts"
-          mkdir -p "$OUT_DIR"
+          short_sha=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          repo_name=$(basename "${GITHUB_REPOSITORY}")
+          out_dir="release_artifacts"
+          mkdir -p "$out_dir"
 
-          # NODEJS
+          pack_zip() {
+            local dir="$1"
+            local lang="$2"
+            local excludes="$3"
+            echo "Packaging ${lang}..."
+            (cd "$dir" && \
+              zip_name="${lang}-${repo_name}-${short_sha}.zip" && \
+              zip -r "$GITHUB_WORKSPACE/$out_dir/$zip_name" . $excludes )
+          }
+
           if [ -d nodejs ]; then
-            echo "Packaging nodejs..."
-            (cd nodejs && \
-              if [ -f package.json ]; then npm ci; fi && \
-              npm run build --if-present || true && \
-              ZIP_NAME="nodejs-${REPO_NAME}-${SHORT_SHA}.zip" && \
-              zip -r "$GITHUB_WORKSPACE/$OUT_DIR/$ZIP_NAME" . -x "node_modules/*" ".git/*" ".github/*" "**/*.zip" "**/dist/*" "**/.venv/*" && \
-              # Optional: publish to GitHub Packages if package.json exists. Keep failures non-fatal.
-              if [ -f package.json ]; then \
-                echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" > .npmrc || true; \
-                npm publish --access public || echo "npm publish failed or not configured; skipping"; \
-              fi )
+            pack_zip "nodejs" "nodejs" "-x node_modules/* .git/* .github/* **/*.zip **/dist/* **/.venv/*"
           else
             echo "No nodejs folder, skipping"
           fi
 
-          # PYTHON
           if [ -d python ]; then
-            echo "Packaging python..."
-            (cd python && \
-              if [ -f requirements.txt ]; then python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt; fi && \
-              ZIP_NAME="python-${REPO_NAME}-${SHORT_SHA}.zip" && \
-              zip -r "$GITHUB_WORKSPACE/$OUT_DIR/$ZIP_NAME" . -x ".venv/*" ".git/*" ".github/*" "**/*.zip" )
+            pack_zip "python" "python" "-x .venv/* .git/* .github/* **/*.zip"
           else
             echo "No python folder, skipping"
           fi
 
-          # JAVA (if present)
-          if [ -d java ]; then
-            echo "Packaging java..."
-            (cd java && \
-              if [ -f pom.xml ]; then mvn -q -DskipTests package; fi && \
-              ZIP_NAME="java-${REPO_NAME}-${SHORT_SHA}.zip" && \
-              zip -r "$GITHUB_WORKSPACE/$OUT_DIR/$ZIP_NAME" . -x ".git/*" ".github/*" "**/*.zip" )
-          else
-            echo "No java folder, skipping"
-          fi
-
-          # BINARY / other (pack entire binary dir)
           if [ -d binary ]; then
-            echo "Packaging binary..."
-            (cd binary && \
-              ZIP_NAME="binary-${REPO_NAME}-${SHORT_SHA}.zip" && \
-              zip -r "$GITHUB_WORKSPACE/$OUT_DIR/$ZIP_NAME" . -x ".git/*" ".github/*" "**/*.zip" )
+            pack_zip "binary" "binary" "-x .git/* .github/* **/*.zip"
           else
             echo "No binary folder, skipping"
           fi
 
-          # List artifacts
-          echo "Artifacts created:" && ls -lah "$OUT_DIR" || true
-          echo "artifacts_dir=$OUT_DIR" >> $GITHUB_OUTPUT
+          echo "Artifacts created:" && ls -lah "$out_dir" || true
+          echo "artifacts_dir=$out_dir" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         id: create_release
