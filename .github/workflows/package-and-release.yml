@@ -26,23 +26,23 @@ jobs:
         id: package_languages
         run: |
           set -euo pipefail
-          short_sha=$(echo "${GITHUB_SHA}" | cut -c1-7)
           repo_name=$(basename "${GITHUB_REPOSITORY}")
+          release_date=$(date -u +"%Y-%m-%d-%H%M%S")
           out_dir="release_artifacts"
           mkdir -p "$out_dir"
 
           pack_zip() {
             local dir="$1"
-            local lang="$2"
+            local lang_suffix="$2"
             local excludes="$3"
-            echo "Packaging ${lang}..."
+            echo "Packaging ${dir}..."
             (cd "$dir" && \
-              zip_name="${lang}-${repo_name}-${short_sha}.zip" && \
+              zip_name="${repo_name}-${lang_suffix}.zip" && \
               zip -r "$GITHUB_WORKSPACE/$out_dir/$zip_name" . $excludes )
           }
 
           if [ -d nodejs ]; then
-            pack_zip "nodejs" "nodejs" "-x node_modules/* .git/* .github/* **/*.zip **/dist/* **/.venv/*"
+            pack_zip "nodejs" "node.js" "-x node_modules/* .git/* .github/* **/*.zip **/dist/* **/.venv/*"
           else
             echo "No nodejs folder, skipping"
           fi
@@ -61,6 +61,7 @@ jobs:
 
           echo "Artifacts created:" && ls -lah "$out_dir" || true
           echo "artifacts_dir=$out_dir" >> $GITHUB_OUTPUT
+          echo "release_date=$release_date" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         id: create_release
@@ -68,9 +69,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: release-${{ github.run_number }}-${{ github.sha }}
-          release_name: Automated release ${{ github.run_number }}
-          body: Automated ZIP build of repository
+          tag_name: release-${{ steps.package_languages.outputs.release_date }}
+          release_name: Release ${{ steps.package_languages.outputs.release_date }}
+          body: |
+            Automated multi-language package release
+            
+            包含以下语言包：
+            - Node.js 包
+            - Python 包  
+            - Binary 包
+            
+            发布时间：${{ steps.package_languages.outputs.release_date }}
           draft: false
           prerelease: false
 
